@@ -145,34 +145,63 @@ void test_vs_recall(float *massQ, size_t vecsize, size_t qsize, HierarchicalNSW<
 //}
 //#include "windows.h"
 
-
+void fvecs_read(int size, int dim, char* path, float* array) {
+    float* row = new float[dim];
+    ifstream input(path, ios::binary);
+    for (int i = 0; i < size; i++) {
+        int head = 0;
+        input.read((char*)&head, 4);
+        input.read((char*)row, head * sizeof(float));
+        for (int j = 0; j < dim; j++) {
+            array[i * dim + j] = row[j];
+        }
+    }
+}
 
 void sift_test() {
-    size_t vecsize = 980000;
-    size_t qsize = 20000;
+//    size_t vecsize = 980000;
+    size_t vecsize = 1000000;
+//    size_t qsize = 20000;
+    size_t qsize = 10000;
     //size_t qsize = 1000;
     //size_t vecdim = 4;
     size_t vecdim = 128;
 
+    char* data_path = "/home/arai/workspace/dataset/sift/sift_base.fvecs";
+    char* query_path = "/home/arai/workspace/dataset/sift/sift_query.fvecs";
+    char* gt_path = "/home/arai/workspace/dataset/sift/sift_groundtruth.ivecs";
+
     float *mass = new float[vecsize * vecdim];
-    ifstream input("../../sift100k.bin", ios::binary);
+//    ifstream input("../../sift100k.bin", ios::binary);
     //ifstream input("../../1M_d=4.bin", ios::binary);
-    input.read((char *) mass, vecsize * vecdim * sizeof(float));
-    input.close();
+//    input.read((char *) mass, vecsize * vecdim * sizeof(float));
+//    input.close();
+
+    fvecs_read(vecsize, vecdim, data_path, mass);
 
     float *massQ = new float[qsize * vecdim];
     //ifstream inputQ("../siftQ100k.bin", ios::binary);
-    ifstream inputQ("../../siftQ100k.bin", ios::binary);
+//    ifstream inputQ("../../siftQ100k.bin", ios::binary);
     //ifstream inputQ("../../1M_d=4q.bin", ios::binary);
-    inputQ.read((char *) massQ, qsize * vecdim * sizeof(float));
-    inputQ.close();
+//    inputQ.read((char *) massQ, qsize * vecdim * sizeof(float));
+//    inputQ.close();
+
+    fvecs_read(qsize, vecdim, query_path, massQ);
 
     unsigned int *massQA = new unsigned int[qsize * 100];
     //ifstream inputQA("../knnQA100k.bin", ios::binary);
-    ifstream inputQA("../../knnQA100k.bin", ios::binary);
+//    ifstream inputQA("../../knnQA100k.bin", ios::binary);
     //ifstream inputQA("../../1M_d=4qa.bin", ios::binary);
-    inputQA.read((char *) massQA, qsize * 100 * sizeof(int));
-    inputQA.close();
+//    inputQA.read((char *) massQA, qsize * 100 * sizeof(int));
+//    inputQA.close();
+
+    ifstream gt_input(gt_path, ios::binary);
+    for (int i = 0; i < qsize; i++) {
+        int t;
+        gt_input.read((char*)&t, 4);
+        gt_input.read((char*)(massQA + t * i), t * 4);
+    }
+    gt_input.close();
 
     int maxn = 16;
     /*unsigned int *massA = new unsigned int[vecsize * 100];
@@ -227,7 +256,7 @@ void sift_test() {
     //return;
 
     vector<std::priority_queue<std::pair<float, labeltype >>> answers;
-    size_t k = 10;
+    size_t k = 5;
     cout << "Loading gt\n";
     //get_gt(mass, massQ, vecsize, qsize, l2space, vecdim, answers,k);
     get_gt(massQA, massQ, mass, vecsize, qsize, l2space, vecdim, answers, k);
