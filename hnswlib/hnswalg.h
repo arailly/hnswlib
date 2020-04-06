@@ -6,11 +6,17 @@
 #include <stdlib.h>
 #include <unordered_set>
 #include <list>
-
+#include <iostream>
 
 namespace hnswlib {
     typedef unsigned int tableint;
     typedef unsigned int linklistsizeint;
+
+    int n_dist_calc = 0;
+    int n_hop = 0;
+    double dist_from_ep, dist_from_ep_base_layer = 0;
+
+    std::ofstream log_ofs("/home/arai/workspace/result/knn-search/hnsw/sift/data1m/ef15/log.csv");
 
     template<typename dist_t>
     class HierarchicalNSW : public AlgorithmInterface<dist_t> {
@@ -246,6 +252,9 @@ namespace hnswlib {
             dist_t lowerBound;
             if (!has_deletions || !isMarkedDeleted(ep_id)) {
                 dist_t dist = fstdistfunc_(data_point, getDataByInternalId(ep_id), dist_func_param_);
+
+                dist_from_ep_base_layer = dist;
+
                 lowerBound = dist;
                 top_candidates.emplace(dist, ep_id);
                 candidate_set.emplace(-dist, ep_id);
@@ -257,6 +266,7 @@ namespace hnswlib {
             visited_array[ep_id] = visited_array_tag;
 
             while (!candidate_set.empty()) {
+                n_hop++;
 
                 std::pair<dist_t, tableint> current_node_pair = candidate_set.top();
 
@@ -291,6 +301,8 @@ namespace hnswlib {
 
                         char *currObj1 = (getDataByInternalId(candidate_id));
                         dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+
+                        n_dist_calc++;
 
                         if (top_candidates.size() < ef || lowerBound > dist) {
                             candidate_set.emplace(-dist, candidate_id);
@@ -912,17 +924,23 @@ namespace hnswlib {
 
         std::priority_queue<std::pair<dist_t, labeltype >>
         searchKnn(const void *query_data, size_t k) const {
+            n_dist_calc = n_hop = 0;
+
             std::priority_queue<std::pair<dist_t, labeltype >> result;
             if (cur_element_count == 0) return result;
 
             tableint currObj = enterpoint_node_;
             dist_t curdist = fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
 
+            dist_from_ep = curdist;
+
             for (int level = maxlevel_; level > 0; level--) {
                 bool changed = true;
                 while (changed) {
                     changed = false;
                     unsigned int *data;
+
+                    n_hop++;
 
                     data = (unsigned int *) get_linklist(currObj, level);
                     int size = getListCount(data);
@@ -933,6 +951,8 @@ namespace hnswlib {
                             throw std::runtime_error("cand error");
                         dist_t d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
 
+                        n_dist_calc++;
+
                         if (d < curdist) {
                             curdist = d;
                             currObj = cand;
@@ -941,6 +961,9 @@ namespace hnswlib {
                     }
                 }
             }
+
+            auto n_dist_calc_upper_layer = n_dist_calc;
+            auto n_hop_upper_layer = n_hop;
 
             std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
             if (has_deletions_) {
@@ -961,6 +984,19 @@ namespace hnswlib {
                 result.push(std::pair<dist_t, labeltype>(rez.first, getExternalLabel(rez.second)));
                 top_candidates.pop();
             }
+
+            auto n_dist_calc_base_layer = n_dist_calc - n_dist_calc_upper_layer;
+            auto n_hop_base_layer = n_hop - n_hop_upper_layer;
+
+            log_ofs << n_dist_calc << ","
+                    << n_dist_calc_upper_layer << ","
+                    << n_dist_calc_base_layer << ","
+                    << n_hop << ","
+                    << n_hop_upper_layer << ","
+                    << n_hop_base_layer << ","
+                    << dist_from_ep << ","
+                    << dist_from_ep_base_layer << "\n";
+
             return result;
         };
 

@@ -97,12 +97,13 @@ void test_vs_recall(float *massQ, size_t vecsize, size_t qsize, HierarchicalNSW<
                     vector<std::priority_queue<std::pair<float, labeltype >>> &answers, size_t k) {
     //vector<size_t> efs = { 1,2,3,4,6,8,12,16,24,32,64,128,256,320 };//  = ; { 23 };
     vector<size_t> efs;
-    for (int i = 10; i < 30; i++) {
-        efs.push_back(i);
-    }
-    for (int i = 100; i < 2000; i += 100) {
-        efs.push_back(i);
-    }
+    efs.push_back(15);
+//    for (int i = 10; i < 20; i++) {
+//        efs.push_back(i);
+//    }
+//    for (int i = 100; i < 2000; i += 100) {
+//        efs.push_back(i);
+//    }
     /*for (int i = 300; i <600; i += 20) {
         efs.push_back(i);
     }*/
